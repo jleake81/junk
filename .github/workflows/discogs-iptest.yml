@@ -1,0 +1,28 @@
+name: discogs-iptest
+
+# Manual-run probe: does a GitHub runner IP get its own clean Discogs budget?
+# Setup: repo Settings > Secrets and variables > Actions > New secret
+#        name DISCOGS_TOKEN, value = your token.
+# Then:  Actions tab > "discogs-iptest" > Run workflow. Read the log.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Discogs rate limit from the runner IP
+        env:
+          DT: ${{ secrets.DISCOGS_TOKEN }}
+        run: |
+          echo "runner public IP: $(curl -s https://api.ipify.org)"
+          UA="jleake81-discogs-radio/0.1 +https://owmybrain.neocities.org"
+          for i in 1 2 3 4 5; do
+            echo "--- call $i ---"
+            curl -s -D - -o /dev/null --max-time 25 \
+              -H "User-Agent: $UA" \
+              "https://api.discogs.com/database/search?type=master&style=Thrash&year=1990&per_page=3&token=$DT" \
+              | grep -i "x-discogs-ratelimit\|^HTTP"
+            sleep 1
+          done
